@@ -23,10 +23,11 @@ type Config struct {
 	Hosts   []string
 
 	DB struct {
-		Name     string
-		User     string `default:"root"`
-		Password string `required:"true" env:"DBPassword"`
-		Port     uint   `default:"3306"`
+		Name      string
+		User      string `default:"root"`
+		Password  string `required:"true" env:"DBPassword"`
+		Port      uint   `default:"3306"`
+		Available bool   `default:"true"`
 	}
 
 	Contacts []struct {
@@ -44,15 +45,17 @@ func generateDefaultConfig() Config {
 		APPName: "configor",
 		Hosts:   []string{"http://example.org", "http://jinzhu.me"},
 		DB: struct {
-			Name     string
-			User     string `default:"root"`
-			Password string `required:"true" env:"DBPassword"`
-			Port     uint   `default:"3306"`
+			Name      string
+			User      string `default:"root"`
+			Password  string `required:"true" env:"DBPassword"`
+			Port      uint   `default:"3306"`
+			Available bool   `default:"true"`
 		}{
-			Name:     "configor",
-			User:     "configor",
-			Password: "configor",
-			Port:     3306,
+			Name:      "configor",
+			User:      "configor",
+			Password:  "configor",
+			Port:      3306,
+			Available: true,
 		},
 		Contacts: []struct {
 			Name  string
@@ -507,5 +510,36 @@ func TestENV(t *testing.T) {
 	defer os.Setenv("CONFIGOR_ENV", "")
 	if configor.ENV() != "production" {
 		t.Errorf("Env should be production when set it with CONFIGOR_ENV")
+	}
+}
+
+type SimpleConfig struct {
+	Silent bool `default:"true"`
+}
+
+func generateDefaultSimpleConfig() SimpleConfig {
+	return SimpleConfig{
+		Silent: true,
+	}
+}
+
+func TestSimpleDefaultValue(t *testing.T) {
+	config := generateDefaultSimpleConfig()
+
+	if bytes, err := json.Marshal(config); err == nil {
+		if file, err := ioutil.TempFile("/tmp", "configor"); err == nil {
+			defer file.Close()
+			defer os.Remove(file.Name())
+			file.Write(bytes)
+
+			var result SimpleConfig
+			configor.Load(&result, file.Name())
+			if !reflect.DeepEqual(result, generateDefaultSimpleConfig()) {
+				t.Logf("result: %#v", result)
+				t.Errorf("result should be set default value correctly")
+			}
+		}
+	} else {
+		t.Errorf("failed to marshal config")
 	}
 }
